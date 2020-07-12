@@ -1,5 +1,5 @@
 library(tidymodels)
-library(gridExtra)
+#library(gridExtra)
 library(tidyverse)
 
 # Load Lending Club Data
@@ -96,7 +96,7 @@ finished_loans %>%
   theme(axis.text.x = element_text(angle = 30))
 
 
-plot2 <- function(data,group,label = group,...) {
+plot2 <- function(data,group,label = group) {
   colors <- c("#D33016","#1BA9C2") #Bad,Good
   if(is.numeric(data[[group]])) {
     data %>%
@@ -104,7 +104,6 @@ plot2 <- function(data,group,label = group,...) {
       geom_density(alpha = 0.5) +
       scale_fill_manual(values = colors) +
       labs(x = label,y = NULL,fill = NULL) +
-      #geom_histogram(...) +
       theme_minimal()
   } else {
     data %>%
