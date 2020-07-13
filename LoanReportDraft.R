@@ -3,7 +3,7 @@ library(tidymodels)
 library(tidyverse)
 
 # Load Lending Club Data
-loans <- read_csv("Data/loan.csv")
+loans <- read_csv("loan.csv")
 
 # View Structure of Data
 str(loans)
@@ -96,7 +96,7 @@ finished_loans %>%
   theme(axis.text.x = element_text(angle = 30))
 
 
-plot2 <- function(data,group,label = group) {
+plotData <- function(data,group,label = group) {
   colors <- c("#D33016","#1BA9C2") #Bad,Good
   if(is.numeric(data[[group]])) {
     data %>%
@@ -120,8 +120,8 @@ plot2 <- function(data,group,label = group) {
       theme_minimal()
   }
 }
-plot2(finished_loans,"int_rate",label = "Interest Rate")
-plot2(finished_loans,"sub_grade",label = "Sub Grade")
+plotData(finished_loans,"int_rate",label = "Interest Rate")
+plotData(finished_loans,"sub_grade",label = "Sub Grade")
 #plot2(finished_loans,"addr_state",label = "State")
 
 library(plotly)
@@ -134,17 +134,68 @@ g <- list(
 finished_loans %>%
   count(addr_state,outcome) %>%
   group_by(addr_state) %>%
-  mutate(prop = round(n/sum(n)*100,2)) %>%
+  mutate(prop = round(n/sum(n)*100,2),
+         n_tot = sum(n)) %>%
   filter(outcome == "Bad Loan") %>%
   plot_geo(locationmode = 'USA-states') %>%
   add_trace(locations= ~addr_state,color = ~prop, z= ~prop,hoverinfo = "text",
-            text= ~paste0("Number of Loans: ",n,"\nGood Loans: ",100-prop,"%\nBad Loans: ",prop,"%"),
+            text= ~paste0("Number of Loans: ",n_tot,"\nGood Loans: ",100-prop,"%\nBad Loans: ",prop,"%"),
             colorscale = "RdBu") %>%
   colorbar(title = "") %>% 
   layout(
     title = 'Percentage of Loans that are "Bad"',
     geo = g
   )
+
+
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white')
+)
+finished_loans %>%
+  count(addr_state, outcome) %>%
+  group_by(addr_state) %>%
+  mutate(prop = round(n/sum(n)*100,2),
+         n_tot = sum(n)) %>%
+  filter(outcome == "Bad Loan") %>%
+  plot_geo(locationmode = 'USA-states') %>%
+  add_trace(locations= ~addr_state,color = ~n_tot, z= ~n_tot,hoverinfo = "text",
+            text= ~paste0("Number of Loans: ",n_tot,"\nGood Loans: ",100-prop,"%\nBad Loans: ",prop,"%"),
+            colorscale = "RdBu") %>%
+  colorbar(title = "") %>% 
+  layout(
+    title = 'Number of Loans ',
+    geo = g
+  )
+
+
+
+
+map <- map_data("state")
+state_link <-tibble(abbr = state.abb,name = tolower(state.name))
+state_centers <- bind_cols(as.tibble(state.center),state_link)
+state_counts<- finished_loans %>%
+  count(addr_state, outcome) %>%
+  group_by(addr_state) %>%
+  mutate(prop = round(n/sum(n)*100,1),
+         n_tot = sum(n)) %>%
+  filter(outcome == "Good Loan") 
+midpoint = (max(state_counts$prop) + min(state_counts$prop)) / 2
+labelDF <- state_counts %>%
+  left_join(state_centers,by = c("addr_state" = "abbr"))
+state_counts %>%
+  left_join(state_link,by = c("addr_state"="abbr")) %>%
+  right_join(map,by = c("name" = "region")) %>%
+  ggplot(aes(x = long,y = lat,group = group,fill = prop)) +
+  geom_polygon(color = "white") +
+  geom_text(data = labelDF,aes(x = x,y = y,group = NULL,label = paste0(prop,"%"))) +
+  scale_fill_gradient2(low = "red",mid = "gray50",high = "blue",midpoint = midpoint,
+                       labels = function(x){paste0(x,"%")},
+                       n.breaks = 4,name = 'Percentage of \n"Good Loans"') +
+  theme_void()
+
 
 
 split_loans <- initial_split(finished_loans%>%

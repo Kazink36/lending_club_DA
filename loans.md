@@ -20,6 +20,7 @@ season with head coach Kyle Whittingham.
 This first chunk loads the necessary R packages.
 
 ``` r
+library(plotly)
 library(tidymodels)
 library(tidyverse)
 ```
@@ -35,54 +36,6 @@ files contain complete loan data for all loans issued through the
 etc.) and latest payment information. The file containing loan data
 through the “present” contains complete loan data for all loans issued
 through the previous completed calendar quarter.
-
-``` r
-# Read the file
-loans <- read_csv("loan.csv")
-```
-
-    ## Parsed with column specification:
-    ## cols(
-    ##   .default = col_double(),
-    ##   id = col_logical(),
-    ##   member_id = col_logical(),
-    ##   term = col_character(),
-    ##   grade = col_character(),
-    ##   sub_grade = col_character(),
-    ##   emp_title = col_character(),
-    ##   emp_length = col_character(),
-    ##   home_ownership = col_character(),
-    ##   verification_status = col_character(),
-    ##   issue_d = col_character(),
-    ##   loan_status = col_character(),
-    ##   pymnt_plan = col_character(),
-    ##   url = col_logical(),
-    ##   desc = col_logical(),
-    ##   purpose = col_character(),
-    ##   title = col_character(),
-    ##   zip_code = col_character(),
-    ##   addr_state = col_character(),
-    ##   earliest_cr_line = col_character(),
-    ##   initial_list_status = col_character()
-    ##   # ... with 29 more columns
-    ## )
-
-    ## See spec(...) for full column specifications.
-
-    ## Warning: 462349 parsing failures.
-    ##   row                       col           expected   actual       file
-    ## 92797 debt_settlement_flag_date 1/0/T/F/TRUE/FALSE Feb-2019 'loan.csv'
-    ## 92797 settlement_status         1/0/T/F/TRUE/FALSE ACTIVE   'loan.csv'
-    ## 92797 settlement_date           1/0/T/F/TRUE/FALSE Feb-2019 'loan.csv'
-    ## 92797 settlement_amount         1/0/T/F/TRUE/FALSE 5443     'loan.csv'
-    ## 92797 settlement_percentage     1/0/T/F/TRUE/FALSE 65       'loan.csv'
-    ## ..... ......................... .................. ........ ..........
-    ## See problems(...) for more details.
-
-``` r
-# View Structure of Data
-str(loans)
-```
 
     ## tibble [2,260,668 × 145] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
     ##  $ id                                        : logi [1:2260668] NA NA NA NA NA NA ...
@@ -340,18 +293,6 @@ str(loans)
     ##   ..   settlement_term = col_logical()
     ##   .. )
 
-``` r
-head(loans)
-```
-
-    ## Warning: `...` is not empty.
-    ## 
-    ## We detected these problematic arguments:
-    ## * `needs_dots`
-    ## 
-    ## These dots only exist to allow future extensions and should be empty.
-    ## Did you misspecify an argument?
-
     ## # A tibble: 6 x 145
     ##   id    member_id loan_amnt funded_amnt funded_amnt_inv term  int_rate
     ##   <lgl> <lgl>         <dbl>       <dbl>           <dbl> <chr>    <dbl>
@@ -539,7 +480,7 @@ plotData <- function(data,group,label = group) {
 plotData(finished_loans,"int_rate",label = "Interest Rate")
 ```
 
-![](loans_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](loans_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ASDF
 
@@ -549,6 +490,14 @@ ASDF
 
   - Point 2
 
+<!-- end list -->
+
+``` r
+plotData(finished_loans,"loan_amnt",label = "Loan Amount")
+```
+
+![](loans_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
 ASDF
 
 #### Key Takeaways
@@ -556,6 +505,16 @@ ASDF
   - Point 1
 
   - Point 2
+
+<!-- end list -->
+
+``` r
+plotData(finished_loans,"term",label = "Loan Length")
+```
+
+![](loans_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+![](loans_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ASDF
 
@@ -563,7 +522,83 @@ ASDF
 
   - POint 1
 
+<!-- end list -->
+
+``` r
+finished_loans %>%
+  mutate(emp_length = fct_relevel(emp_length,"10+ years",after = 10)) %>%
+  mutate(emp_length = fct_relevel(emp_length,"n/a")) %>%
+  plotData("emp_length",label = "Years Employed")
+```
+
+![](loans_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+![](loans_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
 ASDF
+
+``` r
+# library(plotly)
+# g <- list(
+#   scope = 'usa',
+#   projection = list(type = 'albers usa'),
+#   showlakes = TRUE,
+#   lakecolor = toRGB('white')
+# )
+# finished_loans %>%
+#   count(addr_state,outcome) %>%
+#   group_by(addr_state) %>%
+#   mutate(prop = round(n/sum(n)*100,2),
+#          n_tot = sum(n)) %>%
+#   filter(outcome == "Bad Loan") %>%
+#   plot_geo(locationmode = 'USA-states') %>%
+#   add_trace(locations= ~addr_state,color = ~prop, z= ~prop,hoverinfo = "text",
+#             text= ~paste0("Number of Loans: ",n_tot,"\nGood Loans: ",100-prop,"%\nBad Loans: ",prop,"%"),
+#             colorscale = "RdBu") %>%
+#   colorbar(title = "") %>% 
+#   layout(
+#     title = 'Percentage of Loans that are "Bad"',
+#     geo = g
+#   )
+```
+
+``` r
+map <- map_data("state")
+state_link <-tibble(abbr = state.abb,name = tolower(state.name))
+state_centers <- bind_cols(as.tibble(state.center),state_link)
+```
+
+    ## Warning: `as.tibble()` is deprecated as of tibble 2.0.0.
+    ## Please use `as_tibble()` instead.
+    ## The signature and semantics have changed, see `?as_tibble`.
+    ## This warning is displayed once every 8 hours.
+    ## Call `lifecycle::last_warnings()` to see where this warning was generated.
+
+``` r
+state_counts<- finished_loans %>%
+  count(addr_state, outcome) %>%
+  group_by(addr_state) %>%
+  mutate(prop = round(n/sum(n)*100,1),
+         n_tot = sum(n)) %>%
+  filter(outcome == "Good Loan") 
+midpoint = (max(state_counts$prop) + min(state_counts$prop)) / 2
+labelDF <- state_counts %>%
+  left_join(state_centers,by = c("addr_state" = "abbr"))
+state_counts %>%
+  left_join(state_link,by = c("addr_state"="abbr")) %>%
+  right_join(map,by = c("name" = "region")) %>%
+  ggplot(aes(x = long,y = lat,group = group,fill = prop)) +
+  geom_polygon(color = "white") +
+  geom_text(data = labelDF,aes(x = x,y = y,group = NULL,label = paste0(prop,"%"))) +
+  scale_fill_gradient2(low = "red",mid = "gray50",high = "blue",midpoint = midpoint,
+                       labels = function(x){paste0(x,"%")},
+                       n.breaks = 4,name = 'Percentage of \n"Good Loans"') +
+  theme_void()
+```
+
+    ## Warning: Removed 1 rows containing missing values (geom_text).
+
+![](loans_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 #### Key Takeaways
 

@@ -3,6 +3,7 @@ title: "Lending Club Loan Data Analysis"
 author: "Jared Lee"
 date: "5/31/2020"
 output: github_document
+#always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -19,6 +20,7 @@ In a football game, the coach must decide on what play to run on offense. The op
 This first chunk loads the necessary R packages.
 
 ```{r loading_packages, message = FALSE,warning=FALSE}
+library(plotly)
 library(tidymodels)
 library(tidyverse)
 ```
@@ -30,13 +32,16 @@ library(tidyverse)
   Retrieved May 31, 2020 from [Kaggle](https://www.kaggle.com/wendykan/lending-club-loan-data). These files contain complete loan data for all loans issued through the 2007-2015, including the current loan status (Current, Late, Fully Paid, etc.) and latest payment information. The file containing loan data through the "present" contains complete loan data for all loans issued through the previous completed calendar quarter.
 
 
-```{r}
+```{r, message = FALSE,warning=FALSE,results='hide'}
 # Read the file
 loans <- read_csv("loan.csv")
 
 # View Structure of Data
 str(loans)
 head(loans)
+```
+
+```{r}
 # Summary of some key character columns
 summary(as.factor(loans$term))
 summary(as.factor(loans$grade))
@@ -114,7 +119,7 @@ plotData(finished_loans,"int_rate",label = "Interest Rate")
 * Point 2
 
 ```{r}
-
+plotData(finished_loans,"loan_amnt",label = "Loan Amount")
 ```
 
 ASDF
@@ -126,11 +131,11 @@ ASDF
 * Point 2
 
 ```{r, message=FALSE, warning=FALSE}
-
+plotData(finished_loans,"term",label = "Loan Length")
 ```
 
 ```{r, message=FALSE, warning=FALSE,echo=FALSE}
-
+plotData(finished_loans,"sub_grade",label = "Grade")
 ```
 
 ASDF
@@ -140,14 +145,69 @@ ASDF
 * POint 1
 
 ```{r, message=FALSE, warning=FALSE}
-
+finished_loans %>%
+  mutate(emp_length = fct_relevel(emp_length,"10+ years",after = 10)) %>%
+  mutate(emp_length = fct_relevel(emp_length,"n/a")) %>%
+  plotData("emp_length",label = "Years Employed")
 ```
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE}
-
+plotData(finished_loans,"home_ownership",label = "Home Ownership")
 ```
 
 ASDF
+
+```{r}
+# library(plotly)
+# g <- list(
+#   scope = 'usa',
+#   projection = list(type = 'albers usa'),
+#   showlakes = TRUE,
+#   lakecolor = toRGB('white')
+# )
+# finished_loans %>%
+#   count(addr_state,outcome) %>%
+#   group_by(addr_state) %>%
+#   mutate(prop = round(n/sum(n)*100,2),
+#          n_tot = sum(n)) %>%
+#   filter(outcome == "Bad Loan") %>%
+#   plot_geo(locationmode = 'USA-states') %>%
+#   add_trace(locations= ~addr_state,color = ~prop, z= ~prop,hoverinfo = "text",
+#             text= ~paste0("Number of Loans: ",n_tot,"\nGood Loans: ",100-prop,"%\nBad Loans: ",prop,"%"),
+#             colorscale = "RdBu") %>%
+#   colorbar(title = "") %>% 
+#   layout(
+#     title = 'Percentage of Loans that are "Bad"',
+#     geo = g
+#   )
+```
+
+```{r}
+map <- map_data("state")
+state_link <-tibble(abbr = state.abb,name = tolower(state.name))
+state_centers <- bind_cols(as.tibble(state.center),state_link)
+state_counts<- finished_loans %>%
+  count(addr_state, outcome) %>%
+  group_by(addr_state) %>%
+  mutate(prop = round(n/sum(n)*100,1),
+         n_tot = sum(n)) %>%
+  filter(outcome == "Good Loan") 
+midpoint = (max(state_counts$prop) + min(state_counts$prop)) / 2
+labelDF <- state_counts %>%
+  left_join(state_centers,by = c("addr_state" = "abbr"))
+state_counts %>%
+  left_join(state_link,by = c("addr_state"="abbr")) %>%
+  right_join(map,by = c("name" = "region")) %>%
+  ggplot(aes(x = long,y = lat,group = group,fill = prop)) +
+  geom_polygon(color = "white") +
+  geom_text(data = labelDF,aes(x = x,y = y,group = NULL,label = paste0(prop,"%"))) +
+  scale_fill_gradient2(low = "red",mid = "gray50",high = "blue",midpoint = midpoint,
+                       labels = function(x){paste0(x,"%")},
+                       n.breaks = 4,name = 'Percentage of \n"Good Loans"') +
+  theme_void()
+```
+
+
 
 #### Key Takeaways
 
