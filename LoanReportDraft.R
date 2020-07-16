@@ -176,17 +176,20 @@ finished_loans %>%
 map <- map_data("state")
 state_link <-tibble(abbr = state.abb,name = tolower(state.name))
 state_centers <- bind_cols(as.tibble(state.center),state_link)
+popDF <- read_csv("nst-est2019-alldata.csv")
+popDF <- popDF %>%
+  transmute(name = tolower(NAME),pop = POPESTIMATE2019)
 state_counts<- finished_loans %>%
   count(addr_state, outcome) %>%
   group_by(addr_state) %>%
   mutate(prop = round(n/sum(n)*100,1),
          n_tot = sum(n)) %>%
   filter(outcome == "Good Loan") 
-midpoint = (max(state_counts$prop) + min(state_counts$prop)) / 2
+midpoint <- (max(state_counts$prop) + min(state_counts$prop)) / 2
 labelDF <- state_counts %>%
   left_join(state_centers,by = c("addr_state" = "abbr"))
 state_counts %>%
-  left_join(state_link,by = c("addr_state"="abbr")) %>%
+  left_join(state_link,by = c("addr_state" = "abbr")) %>%
   right_join(map,by = c("name" = "region")) %>%
   ggplot(aes(x = long,y = lat,group = group,fill = prop)) +
   geom_polygon(color = "white") +
@@ -194,9 +197,39 @@ state_counts %>%
   scale_fill_gradient2(low = "red",mid = "gray50",high = "blue",midpoint = midpoint,
                        labels = function(x){paste0(x,"%")},
                        n.breaks = 4,name = 'Percentage of \n"Good Loans"') +
-  theme_void()
+  theme_void() +
+  coord_fixed(ratio = 1.3)
+#View(state.x77)
+state_counts_2 <- state_counts %>%
+  left_join(state_link,by = c("addr_state" = "abbr")) %>%
+  left_join(popDF, by = "name") %>%
+  ungroup() %>%
+  mutate(perCap = (n_tot/pop)*100000) 
+labelDF_2 <- labelDF %>% left_join(state_counts_2,by = "addr_state") %>%
+  na_if(0)
+state_counts_2 %>%
+  mutate(perCap = ifelse(perCap<1,NA,perCap)) %>%
+  right_join(map,by = c("name" = "region")) %>%
+  ggplot(aes(x = long,y = lat,group = group,fill = perCap)) +
+  geom_polygon(color = "white") +
+  geom_text(data = labelDF_2,aes(x = x,y = y,group = NULL,fill= NULL,label = round(perCap,0))) +
+  scale_fill_gradient(low = muted("red"),high = "blue",
+                       labels = function(x){paste0(x)},
+                       n.breaks = 4,name = 'Loans Per \n100,000 people') +
+  theme_void() +
+  coord_fixed(ratio = 1.3)
 
 
+finished_loans %>%
+  ggplot(aes(y = sub_grade,x = int_rate)) +
+  geom_boxplot(aes(outlier.color = outcome)) +
+  theme_minimal()
+
+finished_loans %>%
+  mutate(prob = runif(nrow(finished_loans))) %>%
+  filter(prob > .95) %>%
+  ggplot(aes(x = loan_amnt,y = int_rate)) +
+  geom_point(alpha = .2)
 
 split_loans <- initial_split(finished_loans%>%
                                select(outcome,term,int_rate,sub_grade,emp_length,home_ownership,annual_inc)%>%

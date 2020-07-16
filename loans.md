@@ -1,26 +1,37 @@
 Lending Club Loan Data Analysis
 ================
 Jared Lee
-5/31/2020
+
+  - [Summary](#summary)
+  - [Preparations](#preparations)
+  - [Analysis](#analysis)
+      - [Data](#data)
+      - [Preprocessing](#preprocessing)
+      - [Exploratory Analysis](#exploratory-analysis)
+  - [Modeling](#modeling)
+      - [Model Preperation](#model-preperation)
+  - [Unsupervised Machine Learning:
+    Clustering](#unsupervised-machine-learning-clustering)
+  - [Supervised Machine Learning: Predicting Loan
+    Quality](#supervised-machine-learning-predicting-loan-quality)
+      - [Model Metrics](#model-metrics)
+  - [Conclusion](#conclusion)
+      - [Future Work](#future-work)
 
 ## Summary
 
-In a football game, the coach must decide on what play to run on
-offense. The options for these play calls can be broken down into either
-a pass, a run, or a kick – which can be either a field goal attempt or a
-punt. Many factors influence the decision: field position, down and
-distance, time left on the clock, and the score. The purpose of this
-analysis is to develop a model that will predict what type of play a
-coach will call in a given situation. To accomplish this, I looked at
-information on the University of Utah’s football team from the 2019
-season with head coach Kyle Whittingham.
+[Lending Club](https://www.lendingclub.com/) is a peer-to-peer lending
+company. The purpose of this analysis is to look at loan data from
+Lending Club to see what factors influence the likelihood of a loan
+being paid in full. Additionally, this analysis will be used to develop
+a model to predict the probability of a given current loan defaulting or
+being charged off.
 
 ## Preparations
 
 This first chunk loads the necessary R packages.
 
 ``` r
-library(plotly)
 library(tidymodels)
 library(tidyverse)
 ```
@@ -29,312 +40,26 @@ library(tidyverse)
 
 ### Data
 
-Retrieved May 31, 2020 from
+The Lending Club data was retrieved May 31, 2020 from
 [Kaggle](https://www.kaggle.com/wendykan/lending-club-loan-data). These
 files contain complete loan data for all loans issued through the
 2007-2015, including the current loan status (Current, Late, Fully Paid,
 etc.) and latest payment information. The file containing loan data
 through the “present” contains complete loan data for all loans issued
-through the previous completed calendar quarter.
+through the previous completed calendar quarter. Additionally,
+population data was collected from the [U. S.
+Census](https://www.census.gov/data/tables/time-series/demo/popest/2010s-state-total.html)
+to calculate per capita values.
 
-    ## tibble [2,260,668 × 145] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
-    ##  $ id                                        : logi [1:2260668] NA NA NA NA NA NA ...
-    ##  $ member_id                                 : logi [1:2260668] NA NA NA NA NA NA ...
-    ##  $ loan_amnt                                 : num [1:2260668] 2500 30000 5000 4000 30000 5550 2000 6000 5000 6000 ...
-    ##  $ funded_amnt                               : num [1:2260668] 2500 30000 5000 4000 30000 5550 2000 6000 5000 6000 ...
-    ##  $ funded_amnt_inv                           : num [1:2260668] 2500 30000 5000 4000 30000 5550 2000 6000 5000 6000 ...
-    ##  $ term                                      : chr [1:2260668] "36 months" "60 months" "36 months" "36 months" ...
-    ##  $ int_rate                                  : num [1:2260668] 13.6 18.9 18 18.9 16.1 ...
-    ##  $ installment                               : num [1:2260668] 84.9 777.2 180.7 146.5 731.8 ...
-    ##  $ grade                                     : chr [1:2260668] "C" "D" "D" "D" ...
-    ##  $ sub_grade                                 : chr [1:2260668] "C1" "D2" "D1" "D2" ...
-    ##  $ emp_title                                 : chr [1:2260668] "Chef" "Postmaster" "Administrative" "IT Supervisor" ...
-    ##  $ emp_length                                : chr [1:2260668] "10+ years" "10+ years" "6 years" "10+ years" ...
-    ##  $ home_ownership                            : chr [1:2260668] "RENT" "MORTGAGE" "MORTGAGE" "MORTGAGE" ...
-    ##  $ annual_inc                                : num [1:2260668] 55000 90000 59280 92000 57250 ...
-    ##  $ verification_status                       : chr [1:2260668] "Not Verified" "Source Verified" "Source Verified" "Source Verified" ...
-    ##  $ issue_d                                   : chr [1:2260668] "Dec-2018" "Dec-2018" "Dec-2018" "Dec-2018" ...
-    ##  $ loan_status                               : chr [1:2260668] "Current" "Current" "Current" "Current" ...
-    ##  $ pymnt_plan                                : chr [1:2260668] "n" "n" "n" "n" ...
-    ##  $ url                                       : logi [1:2260668] NA NA NA NA NA NA ...
-    ##  $ desc                                      : logi [1:2260668] NA NA NA NA NA NA ...
-    ##  $ purpose                                   : chr [1:2260668] "debt_consolidation" "debt_consolidation" "debt_consolidation" "debt_consolidation" ...
-    ##  $ title                                     : chr [1:2260668] "Debt consolidation" "Debt consolidation" "Debt consolidation" "Debt consolidation" ...
-    ##  $ zip_code                                  : chr [1:2260668] "109xx" "713xx" "490xx" "985xx" ...
-    ##  $ addr_state                                : chr [1:2260668] "NY" "LA" "MI" "WA" ...
-    ##  $ dti                                       : num [1:2260668] 18.2 26.5 10.5 16.7 26.4 ...
-    ##  $ delinq_2yrs                               : num [1:2260668] 0 0 0 0 0 0 0 0 0 1 ...
-    ##  $ earliest_cr_line                          : chr [1:2260668] "Apr-2001" "Jun-1987" "Apr-2011" "Feb-2006" ...
-    ##  $ inq_last_6mths                            : num [1:2260668] 1 0 0 0 0 3 1 0 1 1 ...
-    ##  $ mths_since_last_delinq                    : num [1:2260668] NA 71 NA NA NA NA NA NA 32 17 ...
-    ##  $ mths_since_last_record                    : num [1:2260668] 45 75 NA NA NA NA NA NA NA NA ...
-    ##  $ open_acc                                  : num [1:2260668] 9 13 8 10 12 18 1 19 8 38 ...
-    ##  $ pub_rec                                   : num [1:2260668] 1 1 0 0 0 0 0 0 0 0 ...
-    ##  $ revol_bal                                 : num [1:2260668] 4341 12315 4599 5468 829 ...
-    ##  $ revol_util                                : num [1:2260668] 10.3 24.2 19.1 78.1 3.6 48.1 NA 69.3 35.2 49.8 ...
-    ##  $ total_acc                                 : num [1:2260668] 34 44 13 13 26 44 9 37 38 58 ...
-    ##  $ initial_list_status                       : chr [1:2260668] "w" "w" "w" "w" ...
-    ##  $ out_prncp                                 : num [1:2260668] 2386 29388 4787 3832 29339 ...
-    ##  $ out_prncp_inv                             : num [1:2260668] 2386 29388 4787 3832 29339 ...
-    ##  $ total_pymnt                               : num [1:2260668] 167 1507 354 287 1423 ...
-    ##  $ total_pymnt_inv                           : num [1:2260668] 167 1507 354 287 1423 ...
-    ##  $ total_rec_prncp                           : num [1:2260668] 114 612 213 168 661 ...
-    ##  $ total_rec_int                             : num [1:2260668] 53 895 141 119 762 ...
-    ##  $ total_rec_late_fee                        : num [1:2260668] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ recoveries                                : num [1:2260668] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ collection_recovery_fee                   : num [1:2260668] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ last_pymnt_d                              : chr [1:2260668] "Feb-2019" "Feb-2019" "Feb-2019" "Feb-2019" ...
-    ##  $ last_pymnt_amnt                           : num [1:2260668] 84.9 777.2 180.7 146.5 731.8 ...
-    ##  $ next_pymnt_d                              : chr [1:2260668] "Mar-2019" "Mar-2019" "Mar-2019" "Mar-2019" ...
-    ##  $ last_credit_pull_d                        : chr [1:2260668] "Feb-2019" "Feb-2019" "Feb-2019" "Feb-2019" ...
-    ##  $ collections_12_mths_ex_med                : num [1:2260668] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ mths_since_last_major_derog               : num [1:2260668] NA NA NA NA NA NA NA NA 45 NA ...
-    ##  $ policy_code                               : num [1:2260668] 1 1 1 1 1 1 1 1 1 1 ...
-    ##  $ application_type                          : chr [1:2260668] "Individual" "Individual" "Individual" "Individual" ...
-    ##  $ annual_inc_joint                          : num [1:2260668] NA NA NA NA NA NA NA NA NA NA ...
-    ##  $ dti_joint                                 : num [1:2260668] NA NA NA NA NA NA NA NA NA NA ...
-    ##  $ verification_status_joint                 : chr [1:2260668] NA NA NA NA ...
-    ##  $ acc_now_delinq                            : num [1:2260668] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ tot_coll_amt                              : num [1:2260668] 0 1208 0 686 0 ...
-    ##  $ tot_cur_bal                               : num [1:2260668] 16901 321915 110299 305049 116007 ...
-    ##  $ open_acc_6m                               : num [1:2260668] 2 4 0 1 3 1 0 0 5 1 ...
-    ##  $ open_act_il                               : num [1:2260668] 2 4 1 5 5 7 0 5 2 4 ...
-    ##  $ open_il_12m                               : num [1:2260668] 1 2 0 3 3 2 2 0 5 1 ...
-    ##  $ open_il_24m                               : num [1:2260668] 2 3 2 5 5 3 3 1 5 3 ...
-    ##  $ mths_since_rcnt_il                        : num [1:2260668] 2 3 14 5 4 4 7 23 3 7 ...
-    ##  $ total_bal_il                              : num [1:2260668] 12560 87153 7150 30683 28845 ...
-    ##  $ il_util                                   : num [1:2260668] 69 88 72 68 89 72 NA 87 98 45 ...
-    ##  $ open_rv_12m                               : num [1:2260668] 2 4 0 0 2 1 0 0 1 1 ...
-    ##  $ open_rv_24m                               : num [1:2260668] 7 5 2 0 4 4 1 2 6 12 ...
-    ##  $ max_bal_bc                                : num [1:2260668] 2137 998 0 3761 516 ...
-    ##  $ all_util                                  : num [1:2260668] 28 57 35 70 54 58 100 74 73 48 ...
-    ##  $ total_rev_hi_lim                          : num [1:2260668] 42000 50800 24100 7000 23100 ...
-    ##  $ inq_fi                                    : num [1:2260668] 1 2 1 2 1 2 0 1 2 2 ...
-    ##  $ total_cu_tl                               : num [1:2260668] 11 15 5 4 0 4 0 2 1 2 ...
-    ##  $ inq_last_12m                              : num [1:2260668] 2 2 0 3 0 6 1 0 4 2 ...
-    ##  $ acc_open_past_24mths                      : num [1:2260668] 9 10 4 5 9 8 4 3 12 15 ...
-    ##  $ avg_cur_bal                               : num [1:2260668] 1878 24763 18383 30505 9667 ...
-    ##  $ bc_open_to_buy                            : num [1:2260668] 34360 13761 13800 1239 8471 ...
-    ##  $ bc_util                                   : num [1:2260668] 5.9 8.3 0 75.2 8.9 64 NA 90.8 35.9 60.6 ...
-    ##  $ chargeoff_within_12_mths                  : num [1:2260668] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ delinq_amnt                               : num [1:2260668] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ mo_sin_old_il_acct                        : num [1:2260668] 140 163 87 62 53 195 169 169 145 166 ...
-    ##  $ mo_sin_old_rev_tl_op                      : num [1:2260668] 212 378 92 154 216 176 40 253 244 200 ...
-    ##  $ mo_sin_rcnt_rev_tl_op                     : num [1:2260668] 1 4 15 64 2 10 23 13 6 4 ...
-    ##  $ mo_sin_rcnt_tl                            : num [1:2260668] 1 3 14 5 2 4 7 13 3 4 ...
-    ##  $ mort_acc                                  : num [1:2260668] 0 3 2 3 2 6 0 1 3 1 ...
-    ##  $ mths_since_recent_bc                      : num [1:2260668] 1 4 77 64 2 20 NA 14 6 4 ...
-    ##  $ mths_since_recent_bc_dlq                  : num [1:2260668] NA NA NA NA NA NA NA NA 33 NA ...
-    ##  $ mths_since_recent_inq                     : num [1:2260668] 2 4 14 5 13 3 1 13 2 4 ...
-    ##  $ mths_since_recent_revol_delinq            : num [1:2260668] NA NA NA NA NA NA NA NA 32 17 ...
-    ##  $ num_accts_ever_120_pd                     : num [1:2260668] 0 0 0 0 0 0 0 0 2 0 ...
-    ##  $ num_actv_bc_tl                            : num [1:2260668] 2 2 0 1 2 4 0 7 4 16 ...
-    ##  $ num_actv_rev_tl                           : num [1:2260668] 5 4 3 2 2 6 0 12 5 20 ...
-    ##  $ num_bc_sats                               : num [1:2260668] 3 4 3 1 3 6 0 8 5 19 ...
-    ##  $ num_bc_tl                                 : num [1:2260668] 3 9 3 2 8 10 3 10 10 26 ...
-    ##  $ num_il_tl                                 : num [1:2260668] 16 27 4 7 9 23 5 15 20 9 ...
-    ##  $ num_op_rev_tl                             : num [1:2260668] 7 8 6 2 6 9 0 14 6 33 ...
-    ##  $ num_rev_accts                             : num [1:2260668] 18 14 7 3 15 15 3 20 15 48 ...
-    ##  $ num_rev_tl_bal_gt_0                       : num [1:2260668] 5 4 3 2 2 7 0 12 5 20 ...
-    ##  $ num_sats                                  : num [1:2260668] 9 13 8 10 12 18 1 19 8 38 ...
-    ##   [list output truncated]
-    ##  - attr(*, "problems")= tibble [462,349 × 5] (S3: tbl_df/tbl/data.frame)
-    ##   ..$ row     : int [1:462349] 92797 92797 92797 92797 92797 92797 95386 95386 95386 95386 ...
-    ##   ..$ col     : chr [1:462349] "debt_settlement_flag_date" "settlement_status" "settlement_date" "settlement_amount" ...
-    ##   ..$ expected: chr [1:462349] "1/0/T/F/TRUE/FALSE" "1/0/T/F/TRUE/FALSE" "1/0/T/F/TRUE/FALSE" "1/0/T/F/TRUE/FALSE" ...
-    ##   ..$ actual  : chr [1:462349] "Feb-2019" "ACTIVE" "Feb-2019" "5443" ...
-    ##   ..$ file    : chr [1:462349] "'loan.csv'" "'loan.csv'" "'loan.csv'" "'loan.csv'" ...
-    ##  - attr(*, "spec")=
-    ##   .. cols(
-    ##   ..   id = col_logical(),
-    ##   ..   member_id = col_logical(),
-    ##   ..   loan_amnt = col_double(),
-    ##   ..   funded_amnt = col_double(),
-    ##   ..   funded_amnt_inv = col_double(),
-    ##   ..   term = col_character(),
-    ##   ..   int_rate = col_double(),
-    ##   ..   installment = col_double(),
-    ##   ..   grade = col_character(),
-    ##   ..   sub_grade = col_character(),
-    ##   ..   emp_title = col_character(),
-    ##   ..   emp_length = col_character(),
-    ##   ..   home_ownership = col_character(),
-    ##   ..   annual_inc = col_double(),
-    ##   ..   verification_status = col_character(),
-    ##   ..   issue_d = col_character(),
-    ##   ..   loan_status = col_character(),
-    ##   ..   pymnt_plan = col_character(),
-    ##   ..   url = col_logical(),
-    ##   ..   desc = col_logical(),
-    ##   ..   purpose = col_character(),
-    ##   ..   title = col_character(),
-    ##   ..   zip_code = col_character(),
-    ##   ..   addr_state = col_character(),
-    ##   ..   dti = col_double(),
-    ##   ..   delinq_2yrs = col_double(),
-    ##   ..   earliest_cr_line = col_character(),
-    ##   ..   inq_last_6mths = col_double(),
-    ##   ..   mths_since_last_delinq = col_double(),
-    ##   ..   mths_since_last_record = col_double(),
-    ##   ..   open_acc = col_double(),
-    ##   ..   pub_rec = col_double(),
-    ##   ..   revol_bal = col_double(),
-    ##   ..   revol_util = col_double(),
-    ##   ..   total_acc = col_double(),
-    ##   ..   initial_list_status = col_character(),
-    ##   ..   out_prncp = col_double(),
-    ##   ..   out_prncp_inv = col_double(),
-    ##   ..   total_pymnt = col_double(),
-    ##   ..   total_pymnt_inv = col_double(),
-    ##   ..   total_rec_prncp = col_double(),
-    ##   ..   total_rec_int = col_double(),
-    ##   ..   total_rec_late_fee = col_double(),
-    ##   ..   recoveries = col_double(),
-    ##   ..   collection_recovery_fee = col_double(),
-    ##   ..   last_pymnt_d = col_character(),
-    ##   ..   last_pymnt_amnt = col_double(),
-    ##   ..   next_pymnt_d = col_character(),
-    ##   ..   last_credit_pull_d = col_character(),
-    ##   ..   collections_12_mths_ex_med = col_double(),
-    ##   ..   mths_since_last_major_derog = col_double(),
-    ##   ..   policy_code = col_double(),
-    ##   ..   application_type = col_character(),
-    ##   ..   annual_inc_joint = col_double(),
-    ##   ..   dti_joint = col_double(),
-    ##   ..   verification_status_joint = col_character(),
-    ##   ..   acc_now_delinq = col_double(),
-    ##   ..   tot_coll_amt = col_double(),
-    ##   ..   tot_cur_bal = col_double(),
-    ##   ..   open_acc_6m = col_double(),
-    ##   ..   open_act_il = col_double(),
-    ##   ..   open_il_12m = col_double(),
-    ##   ..   open_il_24m = col_double(),
-    ##   ..   mths_since_rcnt_il = col_double(),
-    ##   ..   total_bal_il = col_double(),
-    ##   ..   il_util = col_double(),
-    ##   ..   open_rv_12m = col_double(),
-    ##   ..   open_rv_24m = col_double(),
-    ##   ..   max_bal_bc = col_double(),
-    ##   ..   all_util = col_double(),
-    ##   ..   total_rev_hi_lim = col_double(),
-    ##   ..   inq_fi = col_double(),
-    ##   ..   total_cu_tl = col_double(),
-    ##   ..   inq_last_12m = col_double(),
-    ##   ..   acc_open_past_24mths = col_double(),
-    ##   ..   avg_cur_bal = col_double(),
-    ##   ..   bc_open_to_buy = col_double(),
-    ##   ..   bc_util = col_double(),
-    ##   ..   chargeoff_within_12_mths = col_double(),
-    ##   ..   delinq_amnt = col_double(),
-    ##   ..   mo_sin_old_il_acct = col_double(),
-    ##   ..   mo_sin_old_rev_tl_op = col_double(),
-    ##   ..   mo_sin_rcnt_rev_tl_op = col_double(),
-    ##   ..   mo_sin_rcnt_tl = col_double(),
-    ##   ..   mort_acc = col_double(),
-    ##   ..   mths_since_recent_bc = col_double(),
-    ##   ..   mths_since_recent_bc_dlq = col_double(),
-    ##   ..   mths_since_recent_inq = col_double(),
-    ##   ..   mths_since_recent_revol_delinq = col_double(),
-    ##   ..   num_accts_ever_120_pd = col_double(),
-    ##   ..   num_actv_bc_tl = col_double(),
-    ##   ..   num_actv_rev_tl = col_double(),
-    ##   ..   num_bc_sats = col_double(),
-    ##   ..   num_bc_tl = col_double(),
-    ##   ..   num_il_tl = col_double(),
-    ##   ..   num_op_rev_tl = col_double(),
-    ##   ..   num_rev_accts = col_double(),
-    ##   ..   num_rev_tl_bal_gt_0 = col_double(),
-    ##   ..   num_sats = col_double(),
-    ##   ..   num_tl_120dpd_2m = col_double(),
-    ##   ..   num_tl_30dpd = col_double(),
-    ##   ..   num_tl_90g_dpd_24m = col_double(),
-    ##   ..   num_tl_op_past_12m = col_double(),
-    ##   ..   pct_tl_nvr_dlq = col_double(),
-    ##   ..   percent_bc_gt_75 = col_double(),
-    ##   ..   pub_rec_bankruptcies = col_double(),
-    ##   ..   tax_liens = col_double(),
-    ##   ..   tot_hi_cred_lim = col_double(),
-    ##   ..   total_bal_ex_mort = col_double(),
-    ##   ..   total_bc_limit = col_double(),
-    ##   ..   total_il_high_credit_limit = col_double(),
-    ##   ..   revol_bal_joint = col_double(),
-    ##   ..   sec_app_earliest_cr_line = col_character(),
-    ##   ..   sec_app_inq_last_6mths = col_double(),
-    ##   ..   sec_app_mort_acc = col_double(),
-    ##   ..   sec_app_open_acc = col_double(),
-    ##   ..   sec_app_revol_util = col_double(),
-    ##   ..   sec_app_open_act_il = col_double(),
-    ##   ..   sec_app_num_rev_accts = col_double(),
-    ##   ..   sec_app_chargeoff_within_12_mths = col_double(),
-    ##   ..   sec_app_collections_12_mths_ex_med = col_double(),
-    ##   ..   sec_app_mths_since_last_major_derog = col_double(),
-    ##   ..   hardship_flag = col_character(),
-    ##   ..   hardship_type = col_logical(),
-    ##   ..   hardship_reason = col_logical(),
-    ##   ..   hardship_status = col_logical(),
-    ##   ..   deferral_term = col_logical(),
-    ##   ..   hardship_amount = col_logical(),
-    ##   ..   hardship_start_date = col_logical(),
-    ##   ..   hardship_end_date = col_logical(),
-    ##   ..   payment_plan_start_date = col_logical(),
-    ##   ..   hardship_length = col_logical(),
-    ##   ..   hardship_dpd = col_logical(),
-    ##   ..   hardship_loan_status = col_logical(),
-    ##   ..   orig_projected_additional_accrued_interest = col_logical(),
-    ##   ..   hardship_payoff_balance_amount = col_logical(),
-    ##   ..   hardship_last_payment_amount = col_logical(),
-    ##   ..   disbursement_method = col_character(),
-    ##   ..   debt_settlement_flag = col_character(),
-    ##   ..   debt_settlement_flag_date = col_logical(),
-    ##   ..   settlement_status = col_logical(),
-    ##   ..   settlement_date = col_logical(),
-    ##   ..   settlement_amount = col_logical(),
-    ##   ..   settlement_percentage = col_logical(),
-    ##   ..   settlement_term = col_logical()
-    ##   .. )
+``` r
+# Read the files
+loans <- read_csv("loan.csv")
+popDF <- read_csv("nst-est2019-alldata.csv")
 
-    ## # A tibble: 6 x 145
-    ##   id    member_id loan_amnt funded_amnt funded_amnt_inv term  int_rate
-    ##   <lgl> <lgl>         <dbl>       <dbl>           <dbl> <chr>    <dbl>
-    ## 1 NA    NA             2500        2500            2500 36 m…     13.6
-    ## 2 NA    NA            30000       30000           30000 60 m…     18.9
-    ## 3 NA    NA             5000        5000            5000 36 m…     18.0
-    ## 4 NA    NA             4000        4000            4000 36 m…     18.9
-    ## 5 NA    NA            30000       30000           30000 60 m…     16.1
-    ## 6 NA    NA             5550        5550            5550 36 m…     15.0
-    ## # … with 138 more variables: installment <dbl>, grade <chr>, sub_grade <chr>,
-    ## #   emp_title <chr>, emp_length <chr>, home_ownership <chr>, annual_inc <dbl>,
-    ## #   verification_status <chr>, issue_d <chr>, loan_status <chr>,
-    ## #   pymnt_plan <chr>, url <lgl>, desc <lgl>, purpose <chr>, title <chr>,
-    ## #   zip_code <chr>, addr_state <chr>, dti <dbl>, delinq_2yrs <dbl>,
-    ## #   earliest_cr_line <chr>, inq_last_6mths <dbl>, mths_since_last_delinq <dbl>,
-    ## #   mths_since_last_record <dbl>, open_acc <dbl>, pub_rec <dbl>,
-    ## #   revol_bal <dbl>, revol_util <dbl>, total_acc <dbl>,
-    ## #   initial_list_status <chr>, out_prncp <dbl>, out_prncp_inv <dbl>,
-    ## #   total_pymnt <dbl>, total_pymnt_inv <dbl>, total_rec_prncp <dbl>,
-    ## #   total_rec_int <dbl>, total_rec_late_fee <dbl>, recoveries <dbl>,
-    ## #   collection_recovery_fee <dbl>, last_pymnt_d <chr>, last_pymnt_amnt <dbl>,
-    ## #   next_pymnt_d <chr>, last_credit_pull_d <chr>,
-    ## #   collections_12_mths_ex_med <dbl>, mths_since_last_major_derog <dbl>,
-    ## #   policy_code <dbl>, application_type <chr>, annual_inc_joint <dbl>,
-    ## #   dti_joint <dbl>, verification_status_joint <chr>, acc_now_delinq <dbl>,
-    ## #   tot_coll_amt <dbl>, tot_cur_bal <dbl>, open_acc_6m <dbl>,
-    ## #   open_act_il <dbl>, open_il_12m <dbl>, open_il_24m <dbl>,
-    ## #   mths_since_rcnt_il <dbl>, total_bal_il <dbl>, il_util <dbl>,
-    ## #   open_rv_12m <dbl>, open_rv_24m <dbl>, max_bal_bc <dbl>, all_util <dbl>,
-    ## #   total_rev_hi_lim <dbl>, inq_fi <dbl>, total_cu_tl <dbl>,
-    ## #   inq_last_12m <dbl>, acc_open_past_24mths <dbl>, avg_cur_bal <dbl>,
-    ## #   bc_open_to_buy <dbl>, bc_util <dbl>, chargeoff_within_12_mths <dbl>,
-    ## #   delinq_amnt <dbl>, mo_sin_old_il_acct <dbl>, mo_sin_old_rev_tl_op <dbl>,
-    ## #   mo_sin_rcnt_rev_tl_op <dbl>, mo_sin_rcnt_tl <dbl>, mort_acc <dbl>,
-    ## #   mths_since_recent_bc <dbl>, mths_since_recent_bc_dlq <dbl>,
-    ## #   mths_since_recent_inq <dbl>, mths_since_recent_revol_delinq <dbl>,
-    ## #   num_accts_ever_120_pd <dbl>, num_actv_bc_tl <dbl>, num_actv_rev_tl <dbl>,
-    ## #   num_bc_sats <dbl>, num_bc_tl <dbl>, num_il_tl <dbl>, num_op_rev_tl <dbl>,
-    ## #   num_rev_accts <dbl>, num_rev_tl_bal_gt_0 <dbl>, num_sats <dbl>,
-    ## #   num_tl_120dpd_2m <dbl>, num_tl_30dpd <dbl>, num_tl_90g_dpd_24m <dbl>,
-    ## #   num_tl_op_past_12m <dbl>, pct_tl_nvr_dlq <dbl>, percent_bc_gt_75 <dbl>,
-    ## #   pub_rec_bankruptcies <dbl>, tax_liens <dbl>, …
+# View Structure of Data
+str(loans)
+head(loans)
+```
 
 ``` r
 # Summary of some key character columns
@@ -419,7 +144,17 @@ summary(as.factor(loans$loan_status))
 
 ### Preprocessing
 
-ASDF
+The data appears pretty clean and the summarized variables do not need
+to be cleaned further. The sub\_grade column appears to be a more
+granular view of the grade column and so only one of them should be used
+in any modeling. The loan\_status column does need to be cleaned up,
+though, and will be split into three groups: Good Loans, Bad Loans, and
+Current Loans. Good loans will be the loans that have been fully paid.
+Bad loans will be loans that were charged off, defaulted or more than a
+month late on the latest payment. Current Loans will be loans that are
+currently outstanding, in the grace period, or less than a month late on
+the latest payment. For the purpose of this analysis, current loans will
+be ignored.
 
 ``` r
 # To simplify, loan status will be grouped into 3 categories: Current, Good, Bad
@@ -427,11 +162,13 @@ good_loans <- c("Does not meet the credit policy. Status:Fully Paid","Fully Paid
 bad_loans <- c("Charged Off","Does not meet the credit policy. Status:Charged Off","Default","Late (31-120 days)")
 current_loans <- c("Current","In Grace Period","Late (16-30 days)")
 
+# Create a new outcome column based on loan_status
 loans <- loans %>%
   mutate(outcome = case_when(loan_status %in% good_loans ~ "Good Loan",
                              loan_status %in% bad_loans ~ "Bad Loan",
                              loan_status %in% current_loans ~ "Current",
                              TRUE ~ "Other"))
+
 # Make Sure that all loan_status are converted (no "Other"s)
 summary(as.factor(loans$outcome))
 ```
@@ -447,10 +184,20 @@ finished_loans <- loans %>%
 
 ### Exploratory Analysis
 
-ASDF
+Several plots will be created to explore how different variables affect
+the quality of a loan. To minimize the amount of code and keep a
+consistent style, this function generates plots based on a column input.
+It creates a density plot for numeric columns and two bar plots for
+catagorical columns, one with the count and one with the proportion of
+the quality of the loan. It is important to remember density plots do
+not show the actual counts. Because there are significantly more good
+loans in the data set, the density plots can make it appear like there
+are more bad loans than in reality. A bad loan peak that is higher than
+a good loan peak does not mean that there are more bad loans at that
+value.
 
 ``` r
-plotData <- function(data,group,label = group) {
+plotData <- function(data, group, label = group) {
   colors <- c("#D33016","#1BA9C2") #Bad,Good
   if(is.numeric(data[[group]])) {
     data %>%
@@ -482,13 +229,21 @@ plotData(finished_loans,"int_rate",label = "Interest Rate")
 
 ![](loans_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-ASDF
+This density plot of the interest rate clearly shows that most of the
+loans have an interest rate of 20% or less. There is also a split
+between the quality of the loans: Good loans tend to have lower interest
+rates than bad loans. Most of the good loans have interest rates less
+than 15% with the most common interest rate being slightly above 5% and
+about 12%. Bad loans have interest rates that are typically between 10%
+and 20% with a most common rate of about 14%. Loans with interest rates
+higher than 20% are rare and more likely to be bad loans.
 
 #### Key Takeaways
 
-  - Point 1
+  - Good loans tend to have lower interest rates than bad loans.
 
-  - Point 2
+  - Interest rates are typically less than 15% for good loans and
+    between 10% and 20% for bad loans.
 
 <!-- end list -->
 
@@ -498,13 +253,40 @@ plotData(finished_loans,"loan_amnt",label = "Loan Amount")
 
 ![](loans_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
-ASDF
+This is a similar density plot of the quality of loans by the size of
+the loan. There are clear peaks at round numbers, which is unsurprising
+as a loan of $15,000 is much more likely to occur than a loan of
+$12,345. The most common loan is for $10,000, and amounts less than that
+are slightly more likely to be a good loan. Loans greater than $10,000
+may be more likely to be a bad loan but the ratio of good loans to bad
+loans does not appear to change significantly above that amount.
 
 #### Key Takeaways
 
-  - Point 1
+  - The most common loan is for $10,000.
 
-  - Point 2
+  - The ratio of good loans to bad loans is similar for loans more than
+    %12,000.
+
+<!-- end list -->
+
+``` r
+plotData(finished_loans,"installment",label = "Monthly Payment [$]")
+```
+
+![](loans_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+This density plot shows the distributions of good and bad loans against
+the size of the monthly payments on the loans. Both distributions look
+very similar to each other with most payments under $500. The most
+common payment for either quality loans was around $300.
+
+#### Key Takeaways
+
+  - Most payments are under $500.
+
+  - The quality of the loan does not appear to relate to the size of the
+    monthly installment.
 
 <!-- end list -->
 
@@ -512,15 +294,43 @@ ASDF
 plotData(finished_loans,"term",label = "Loan Length")
 ```
 
-![](loans_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
-
 ![](loans_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
-ASDF
+The term length for Lending Club loans is either 3 or 5 years. The vast
+majority of loans are for 3 years and that is the length suggest by
+Lending Club. When a loan has a term length of 5 years, it is a bad loan
+approximately 35% of the time. This is much higher than the
+approximately 11% of 3 year loans that are bad.
 
 #### Key Takeaways
 
-  - POint 1
+  - The majority of Lending Club loans are for 36 months or 3 years.
+
+  - 60 month or 5 year loans have a higher proportion of bad loans.
+
+![](loans_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+The grade of the loan is calculated by Lending Club based on several
+factors, the largest of which is the applicants credit score. The
+Lending Club data does not include the applicants credit score so the
+grade will be used as a proxy. The grade of most of the loans are B or C
+and the distribution is slightly skewed toward lower grades.There is a
+very clear and strong relationship between the grade and the quality of
+a loan. Loans with higher grades are more likely to be good loans, and
+loans with lower grades are more likely to be bad loans. However, There
+are a low number of F and G loans and so the expected proportion of the
+quality of the loans may have more uncertainty. Even ignoring F and G
+loans, the relationship between grade and quality of loans is still very
+clear and strong.
+
+#### Key Takeaways
+
+  - Grade is a proxy for the applicant’s credit score.
+
+  - The grade distribution is skewed toward lower scores with the most
+    loans occurring at grades of B or C.
+
+  - Loans with higher grades are more likely to be good loans.
 
 <!-- end list -->
 
@@ -531,61 +341,88 @@ finished_loans %>%
   plotData("emp_length",label = "Years Employed")
 ```
 
-![](loans_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
-
 ![](loans_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
-ASDF
+The plurality of completed loans are given to people who have been
+employed for 10 or more years. As the length of time employed increased
+there is a very slight increase to the quality of the loans. When
+employment length data is not available, the quality of the loan is much
+lower.
+
+#### Key Takeaways
+
+  - Most loan recipients have been employed for 10 or more years.
+
+  - There is a small positive relationship between the number of years
+    employed and the quality of the loan.
+
+![](loans_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+This bar plot shows the count and proportion of the quality of the loan
+split by the type of home ownership. The “other,” “none,” and “any”
+levels of home ownership are negligible and can be safely ignored in
+analysis and modeling. Almost all loans went to people who rented, had a
+mortgage, or owned their own home, although the number of people who
+owned their own home is far fewer than the number in either of the other
+two categories. Renters repaid their loans approximately 75% of the time
+compared to about 78% of the time for home owners and about 81.5% of the
+time for people with a mortgage.
+
+#### Key Takeaways
+
+  - The vast majority of loans went to people renting or who had a
+    mortgage.
+
+  - People with a mortgage were more likely to fully pay their loan than
+    people who rented.
+
+<!-- end list -->
 
 ``` r
-# library(plotly)
-# g <- list(
-#   scope = 'usa',
-#   projection = list(type = 'albers usa'),
-#   showlakes = TRUE,
-#   lakecolor = toRGB('white')
-# )
-# finished_loans %>%
-#   count(addr_state,outcome) %>%
-#   group_by(addr_state) %>%
-#   mutate(prop = round(n/sum(n)*100,2),
-#          n_tot = sum(n)) %>%
-#   filter(outcome == "Bad Loan") %>%
-#   plot_geo(locationmode = 'USA-states') %>%
-#   add_trace(locations= ~addr_state,color = ~prop, z= ~prop,hoverinfo = "text",
-#             text= ~paste0("Number of Loans: ",n_tot,"\nGood Loans: ",100-prop,"%\nBad Loans: ",prop,"%"),
-#             colorscale = "RdBu") %>%
-#   colorbar(title = "") %>% 
-#   layout(
-#     title = 'Percentage of Loans that are "Bad"',
-#     geo = g
-#   )
+finished_loans %>%
+  mutate(purpose = str_to_title(str_replace(purpose,"_"," "))) %>%
+  plotData("purpose",label = "Purpose of Loan")
 ```
+
+    ## `summarise()` regrouping output by 'purpose' (override with `.groups` argument)
+
+![](loans_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+This plot also shows the count and proportion of good and bad loans
+broken down by the stated purpose of the loan. The majority of loans
+were given for the purpose of debt consolidation or paying off a credit
+card, although most were for debt consolidation. The debt consolidation
+loans had a lower proportion of good loans than loans for credit cards.
+Small business loans are typically the lowest quality as they have the
+highest proportion of bad loans, however, small business loans make up
+only 1.2% of all loans.
+
+#### Key Takeaways
+
+  - Most loans were given for debt consolidation (58%).
+
+  - Loans to pay off a credit card were typically higher quality than
+    loans for debt consolidation.
+
+<!-- end list -->
 
 ``` r
 map <- map_data("state")
 state_link <-tibble(abbr = state.abb,name = tolower(state.name))
-state_centers <- bind_cols(as.tibble(state.center),state_link)
-```
-
-    ## Warning: `as.tibble()` is deprecated as of tibble 2.0.0.
-    ## Please use `as_tibble()` instead.
-    ## The signature and semantics have changed, see `?as_tibble`.
-    ## This warning is displayed once every 8 hours.
-    ## Call `lifecycle::last_warnings()` to see where this warning was generated.
-
-``` r
+state_centers <- bind_cols(as_tibble(state.center),state_link)
+popDF <- popDF %>%
+  transmute(name = tolower(NAME),pop = POPESTIMATE2019)
 state_counts<- finished_loans %>%
   count(addr_state, outcome) %>%
   group_by(addr_state) %>%
   mutate(prop = round(n/sum(n)*100,1),
          n_tot = sum(n)) %>%
   filter(outcome == "Good Loan") 
-midpoint = (max(state_counts$prop) + min(state_counts$prop)) / 2
+midpoint <- (max(state_counts$prop) + min(state_counts$prop)) / 2
 labelDF <- state_counts %>%
   left_join(state_centers,by = c("addr_state" = "abbr"))
 state_counts %>%
-  left_join(state_link,by = c("addr_state"="abbr")) %>%
+  left_join(state_link,by = c("addr_state" = "abbr")) %>%
   right_join(map,by = c("name" = "region")) %>%
   ggplot(aes(x = long,y = lat,group = group,fill = prop)) +
   geom_polygon(color = "white") +
@@ -593,32 +430,100 @@ state_counts %>%
   scale_fill_gradient2(low = "red",mid = "gray50",high = "blue",midpoint = midpoint,
                        labels = function(x){paste0(x,"%")},
                        n.breaks = 4,name = 'Percentage of \n"Good Loans"') +
-  theme_void()
+  theme_void() +
+  coord_fixed(ratio = 1.3)
 ```
 
-    ## Warning: Removed 1 rows containing missing values (geom_text).
+![](loans_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
-![](loans_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+This map shows the percentage of good loans split up by state. States
+colored red have worse quality loans than states colored blue. States in
+the Southeast region of the country, with the exception of Georgia, tend
+to have a slightly lower percentage of good loans. This is especially
+true in Mississippi, which has the lowest percentage of good loans out
+of every state at only 71.5%. Additionally Nebraska had the second worst
+percentage at 72.6%. The combined Mountain and Pacific Northwest regions
+(including states like Washington, Montana, Colorado, and Utah) along
+with New England tended to have the highest percentage of good loans,
+with most states in these regions having percentages above 80%. Vermont,
+Oregon, and Maine were the best states with percentages of 84.7%, 84.5%,
+and 84.4% respectively.
 
 #### Key Takeaways
 
-  - Point 1
+  - The Southeast had the lowest quality loans, with Mississippi being
+    the worst state in the country at 71.5% of loans paid back.
+
+  - New England had the highest quality loans, with Vermont being the
+    best state in the country at 84.7% of loans paid back.
+
+<!-- end list -->
+
+``` r
+state_counts_2 <- state_counts %>%
+  left_join(state_link,by = c("addr_state" = "abbr")) %>%
+  left_join(popDF, by = "name") %>%
+  ungroup() %>%
+  mutate(perCap = (n_tot/pop)*100000) 
+labelDF_2 <- labelDF %>% left_join(state_counts_2,by = "addr_state")
+state_counts_2 %>%
+  mutate(perCap = ifelse(perCap<1,NA,perCap)) %>%
+  right_join(map,by = c("name" = "region")) %>%
+  ggplot(aes(x = long,y = lat,group = group,fill = perCap)) +
+  geom_polygon(color = "white") +
+  geom_text(data = labelDF_2,aes(x = x,y = y,group = NULL,fill= NULL,label = round(perCap,0))) +
+  scale_fill_gradient(low = muted("red"),high = "blue",
+                       labels = function(x){paste0(x)},
+                       n.breaks = 4,name = 'Loans Per \n100,000 people') +
+  theme_void() +
+  coord_fixed(ratio = 1.3)
+```
+
+![](loans_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+This map shows the per capita amount of loans for each state using
+population estimates from the U.S. Census for 2019. Lending club loans
+are unavailable for people living in Iowa and so there is no data for
+the state. There doesn’t appear to be any type of regional difference in
+the amount of loans that are taken out. Nevada does have the most loans
+(649) by a large margin, almost 100 more loans per 100,000 people than
+the second highest state, New York (559). Considering the state is known
+for gambling and Las Vegas, and that the purpose for most loans is for
+debt consolidation, it seems reasonable to conclude that the two are
+related. However, further analysis would be needed to support that
+relationship. Idaho has the fewest amount of loans (89) of any of the
+states.
+
+#### Key Takeaways
+
+  - There does not appear to be significant regional differences in the
+    amount of loans taken out.
+
+  - Nevada has the most loans per capita at 649 loans per 100,000
+    people.
 
 ## Modeling
 
+This analysis will include two different types of machine learning. An
+unsupervised machine learning algorithm will be used to segment the
+loans into a number of different clusters to try and find additional
+patterns in the large dataset. Additionally, a supervised machine
+learning classification model will be constructed to predict the
+likelihood of a loan being paid back.
+
 ### Model Preperation
 
-ASDF
+Most machine learning algorithms require a matrix of numbers to run. The
+Lending Club dataset, however, includes many features that are
+categorical. This code will turn those catagorical features into dummy
+variables of ones and zeroes as well as scale and center the numeric
+features to improve the speed and performance of the algorithms.
 
-## Model Comparison
+## Unsupervised Machine Learning: Clustering
 
-ASDf
+## Supervised Machine Learning: Predicting Loan Quality
 
 ### Model Metrics
-
-ASDF
-
-ASDF
 
 ## Conclusion
 
